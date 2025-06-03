@@ -5,4 +5,5 @@
 #SBATCH -o slurm.%N.%j.out # STDOUT
 #SBATCH -e slurm.%N.%j.err # STDERR
 
+conda activate base #TODO: add proper env
 python scripts/unzip_datasets.sh
