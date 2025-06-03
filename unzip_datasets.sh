@@ -6,4 +6,4 @@
 #SBATCH -e slurm.%N.%j.err # STDERR
 
 source .venv/bin/activate
-python scripts/unzip_datasets.sh
+python scripts/unzip_datasets.py
