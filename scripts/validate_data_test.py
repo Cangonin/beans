@@ -15,6 +15,7 @@ def get_md5(file_name):
 def check_md5(file_name, md5):
     if md5 != get_md5(file_name):
         assert False, f'md5 for {file_name} does not match'
+        
 with open('data/file_hashes_small') as f:
     for line in f:
         path, md5 = line.strip().split('\t')

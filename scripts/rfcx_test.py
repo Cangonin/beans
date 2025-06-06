@@ -20,13 +20,6 @@ from plumbum import FG, local
 
 dataset = {}
 
-def get_md5(file_path:pathlib.Path) -> str:
-    with open(file_path, "rb") as f:
-        file_hash = hashlib.md5()
-        while chunk := f.read(8192):
-            file_hash.update(chunk)
-    return file_hash.hexdigest()
-
 file_names = ["032cb2915.flac", "0a4e7e350.flac"]
 
 # target_hash_value = ["cfed055fc2d78478124efa9dae38852f", "7d1663f53d4cd54d01e63caa7235b188"]
