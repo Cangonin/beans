@@ -3,6 +3,7 @@ import argparse
 import torch
 import torch.nn as nn
 import torchvision
+from torchaudio.pipelines import HUBERT_BASE
 
 
 class ResNetClassifier(nn.Module):
@@ -74,3 +75,26 @@ class VGGishClassifier(nn.Module):
 
         return loss, logits
 
+# TODO: understand if we fine-tune the whole model or if we freeze it and only train the last linear layer (I guess the first option)
+# To note: when running the evaluation, the batch size and the learning rate have default values here that may not be adapted to the model
+class HubertClassifier(nn.Module):
+    def __init__(self, num_classes=None, multi_label=False):
+        super().__init__()
+        self.linear = nn.Linear(in_features=768, out_features=num_classes)
+        self.hubert_base = HUBERT_BASE.get_model()
+        #self.sample_rate = HUBERT_BASE.sample_rate
+        
+        if multi_label:
+            self.loss_func = nn.BCEWithLogitsLoss()
+        else:
+            self.loss_func = nn.CrossEntropyLoss()
+    
+    def forward(self, x, y=None):
+        out, _ = self.hubert_base(x) # Will get dimension [batch size, time, num_features]
+        out = torch.mean(out, dim=1) # Dimension [batch_size, num_features]
+        logits = self.linear(out)
+        loss = None
+        if y is not None:
+            loss = self.loss_func(logits, y)
+
+        return loss, logits
