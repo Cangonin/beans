@@ -100,13 +100,13 @@ class HubertClassifier(nn.Module):
 
         return loss, logits
 
+#TODO: check that this actually does what I want it to do
 class HubertClassifierFrozen(nn.Module):
     def __init__(self, num_classes=None, multi_label=False):
         super().__init__()
         self.linear = nn.Linear(in_features=768, out_features=num_classes)
         self.hubert_base = HUBERT_BASE.get_model()
         self.hubert_base.eval()
-        #self.sample_rate = HUBERT_BASE.sample_rate
         
         if multi_label:
             self.loss_func = nn.BCEWithLogitsLoss()
