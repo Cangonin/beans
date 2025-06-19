@@ -1,5 +1,6 @@
 import sys
-from plumbum import local, FG
+
+from plumbum import FG, local
 from plumbum.commands.processes import ProcessExecutionError
 
 python = local['python']
@@ -18,6 +19,8 @@ MODELS = [
     ('resnet152', 'resnet152', ''),
     ('resnet152-pretrained', 'resnet152-pretrained', ''),
     ('vggish', 'vggish', ''),
+    ('hubert', 'hubert', ''),
+    ('hubert-frozen', 'hubert-frozen', ''),
 ]
 
 TASKS = [
