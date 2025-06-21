@@ -23,7 +23,8 @@ from xgboost import XGBClassifier
 from beans.datasets import ClassificationDataset, RecognitionDataset
 from beans.metrics import Accuracy, MeanAveragePrecision
 from beans.models import (HubertClassifier, HubertClassifierFrozen,
-                          ResNetClassifier, VGGishClassifier)
+                          ResNetClassifier, SingleMultiTaskClassifier,
+                          VGGishClassifier)
 
 
 def read_datasets(path):
@@ -186,7 +187,12 @@ def train_pytorch_model(
             model = HubertClassifierFrozen(
                 num_classes=num_labels,
                 multi_label=(args.task=='detection')).to(device)
-
+        elif args.model_type.startswith('pilot'):
+            model = SingleMultiTaskClassifier(
+                model_type=args.model_type, 
+                num_classes=num_labels,
+                multi_label=(args.task=='detection')).to(device)
+        
         optimizer = optim.Adam(params=model.parameters(), lr=lr)
 
         for epoch in range(args.epochs):
@@ -256,7 +262,10 @@ def main():
         'resnet18', 'resnet18-pretrained',
         'resnet50', 'resnet50-pretrained',
         'resnet152', 'resnet152-pretrained',
-        'vggish', 'hubert', 'hubert-frozen'])
+        'vggish', 'hubert', 'hubert-frozen', 
+        'pilot-individual', 'pilot-species', 
+        'pilot-vox-type', 'pilot-mtl-equal', 
+        'pilot-mtl-manual', 'pilot-mtl-gradnorm'])
     parser.add_argument('--dataset', choices=datasets.keys())
     parser.add_argument('--num-workers', type=int, default=4)
     parser.add_argument('--stop-shuffle', action='store_true')
@@ -274,7 +283,7 @@ def main():
 
     if args.model_type == 'vggish':
         feature_type = 'vggish'
-    elif args.model_type.startswith('hubert'):
+    elif args.model_type.startswith(('hubert', 'pilot')):
         feature_type = 'waveform'
     elif args.model_type.startswith('resnet'):
         feature_type = 'melspectrogram'
@@ -287,6 +296,8 @@ def main():
     # Not very clean, maybe add it in argparse instead?
     if args.model_type.startswith('hubert'):
         dataset['sample_rate'] = HUBERT_BASE.sample_rate
+    elif args.model_type.startswith('pilot'):
+        dataset['sample_rate'] = 16000
     
     num_labels = dataset['num_labels']
 

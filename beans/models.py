@@ -1,9 +1,10 @@
-import argparse
+import pathlib
 
 import torch
 import torch.nn as nn
 import torchvision
 from torchaudio.pipelines import HUBERT_BASE
+from transformers import ASTModel
 
 
 class ResNetClassifier(nn.Module):
@@ -106,7 +107,6 @@ class HubertClassifierFrozen(nn.Module):
         super().__init__()
         self.linear = nn.Linear(in_features=768, out_features=num_classes)
         self.hubert_base = HUBERT_BASE.get_model()
-        self.hubert_base.eval()
         
         if multi_label:
             self.loss_func = nn.BCEWithLogitsLoss()
@@ -114,11 +114,63 @@ class HubertClassifierFrozen(nn.Module):
             self.loss_func = nn.CrossEntropyLoss()
     
     def forward(self, x, y=None):
-        out, _ = self.hubert_base(x) # Will get dimension [batch size, time, num_features]
-        out = torch.mean(out, dim=1) # Dimension [batch_size, num_features]
+        with torch.no_grad():
+            out, _ = self.hubert_base(x) # Will get dimension [batch size, time, num_features]
+            out = torch.mean(out, dim=1) # Dimension [batch_size, num_features]
+        
         logits = self.linear(out)
         loss = None
         if y is not None:
             loss = self.loss_func(logits, y)
 
         return loss, logits
+
+class SingleMultiTaskEncoder(torch.nn.Module):
+    def __init__(self, hidden_layer_size: int = 768):
+        super().__init__()
+        self.embedding_model = ASTModel.from_pretrained(
+            "MIT/ast-finetuned-audioset-10-10-0.4593"
+        )
+        self.hidden_layer_size = hidden_layer_size
+        if torch.cuda.is_available():
+            self.embedding_model = self.embedding_model.cuda()
+        self.linearshared1 = torch.nn.Linear(
+            768,
+            self.hidden_layer_size,
+        )
+        self.activation1 = torch.nn.ReLU()
+        self.dropout1 = torch.nn.Dropout(p=0.7)  # Will be replaced anyway
+
+    def forward(self, x):
+        with torch.no_grad():
+            x = self.embedding_model(**x).last_hidden_state
+            # torch.FloatTensor of shape (batch_size, sequence_length, hidden_size)
+            x = torch.mean(
+                x, dim=1
+            )  # output shape (batch size, hidden_size). Should I average in the end instead?
+        x = self.linearshared1(x)
+        x = self.activation1(x)
+        x = self.dropout1(x)
+        return x
+
+class SingleMultiTaskClassifier(torch.nn.Module):
+    def __init__(self, model_type: str, num_classes=None, multi_label=False):
+        super().__init__()
+        self.linear = nn.Linear(in_features=768, out_features=num_classes)
+        self.encoder = SingleMultiTaskEncoder()
+        model_path = pathlib.Path(__file__).parent.parent.resolve() / "data" / "shared_models" / (model_type.replace("pilot-", "") + ".pth")
+        self.encoder.load_state_dict(torch.load(model_path))     
+        
+        if multi_label:
+            self.loss_func = nn.BCEWithLogitsLoss()
+        else:
+            self.loss_func = nn.CrossEntropyLoss()
+    
+    def forward(self, x, y=None):
+        out = self.encoder(x)
+        logits = self.linear(out)
+        loss = None
+        if y is not None:
+            loss = self.loss_func(logits, y)
+
+        return loss, logits    
