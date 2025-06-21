@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torchvision
 from torchaudio.pipelines import HUBERT_BASE
-from transformers import ASTModel
+from transformers import ASTFeatureExtractor, ASTModel
 
 
 class ResNetClassifier(nn.Module):
@@ -158,6 +158,7 @@ class SingleMultiTaskClassifier(torch.nn.Module):
         super().__init__()
         self.linear = nn.Linear(in_features=768, out_features=num_classes)
         self.encoder = SingleMultiTaskEncoder()
+        self.mfcc_extractor = ASTFeatureExtractor()
         model_path = pathlib.Path(__file__).parent.parent.resolve() / "data" / "shared_models" / (model_type.replace("pilot-", "") + ".pth")
         self.encoder.load_state_dict(torch.load(model_path))     
         
@@ -167,6 +168,7 @@ class SingleMultiTaskClassifier(torch.nn.Module):
             self.loss_func = nn.CrossEntropyLoss()
     
     def forward(self, x, y=None):
+        x = self.mfcc_extractor(x, return_tensors='pt')
         out = self.encoder(x)
         logits = self.linear(out)
         loss = None
