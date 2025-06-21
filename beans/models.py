@@ -158,7 +158,7 @@ class SingleMultiTaskClassifier(torch.nn.Module):
         super().__init__()
         self.linear = nn.Linear(in_features=768, out_features=num_classes)
         self.encoder = SingleMultiTaskEncoder()
-        self.mfcc_extractor = ASTFeatureExtractor()
+        self.mfcc_extractor = ASTFeatureExtractor(sampling_rate=16000) # TODO: make that better
         model_path = pathlib.Path(__file__).parent.parent.resolve() / "data" / "shared_models" / (model_type.replace("pilot-", "") + ".pth")
         self.encoder.load_state_dict(torch.load(model_path))     
         
