@@ -168,7 +168,7 @@ class SingleMultiTaskClassifier(torch.nn.Module):
             self.loss_func = nn.CrossEntropyLoss()
     
     def forward(self, x, y=None):
-        x = self.mfcc_extractor(x, return_tensors='pt')
+        x = self.mfcc_extractor(x.cpu(), return_tensors='pt')
         out = self.encoder(x)
         logits = self.linear(out)
         loss = None
