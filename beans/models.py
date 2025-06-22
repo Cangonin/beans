@@ -158,7 +158,6 @@ class SingleMultiTaskClassifier(torch.nn.Module):
         super().__init__()
         self.linear = nn.Linear(in_features=768, out_features=num_classes)
         self.encoder = SingleMultiTaskEncoder()
-        self.mfcc_extractor = ASTFeatureExtractor() # TODO: make that better
         model_path = pathlib.Path(__file__).parent.parent.resolve() / "data" / "shared_models" / (model_type.replace("pilot-", "") + ".pth")
         self.encoder.load_state_dict(torch.load(model_path))     
         
@@ -168,10 +167,6 @@ class SingleMultiTaskClassifier(torch.nn.Module):
             self.loss_func = nn.CrossEntropyLoss()
     
     def forward(self, x, y=None):
-        x = list(x.cpu().numpy())
-        x = self.mfcc_extractor(x, sampling_rate=16000, return_tensors='pt')
-        x['input_values'] = x['input_values'].cuda() if torch.cuda.is_available() else x['input_values']
-
         out = self.encoder(x)
         logits = self.linear(out)
         loss = None
