@@ -283,10 +283,12 @@ def main():
 
     if args.model_type == 'vggish':
         feature_type = 'vggish'
-    elif args.model_type.startswith(('hubert', 'pilot')):
+    elif args.model_type.startswith('hubert'):
         feature_type = 'waveform'
     elif args.model_type.startswith('resnet'):
         feature_type = 'melspectrogram'
+    elif args.model_type.startswith('pilot'):
+        feature_type = 'ast'
     else:
         feature_type = 'mfcc'
 
