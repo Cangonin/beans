@@ -103,9 +103,12 @@ def _get_vggish_spectrogram_with_offset(filename, st, ed, max_duration, target_s
 
 # TODO: understand what that means
 @cached(thread_safe=False, max_size=100_000)
-def _get_ast_spectrogram(filename, max_duration, target_sample_rate):
+def _get_ast_spectrogram(filename, max_duration, target_sample_rate, st=None, ed=None):
     assert target_sample_rate == 16_000
     waveform = _get_waveform(filename, max_duration, target_sample_rate).numpy()
+    if st:
+        assert ed is not None
+        waveform = waveform[st:ed]
     mel_spectrogram_extractor = ASTFeatureExtractor()
     spec = mel_spectrogram_extractor(waveform, sampling_rate=target_sample_rate, return_tensors='pt')
     return spec
@@ -287,6 +290,8 @@ class RecognitionDataset(Dataset):
             x = _get_ast_spectrogram(
                  wav_path,
                 max_duration=self.max_duration,
-                target_sample_rate=self.sample_rate
+                target_sample_rate=self.sample_rate,
+                st=offset_st,
+                ed=offset_ed
             )
         return x, self.ys[idx]
