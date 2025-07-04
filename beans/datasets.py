@@ -1,11 +1,13 @@
 import json
-import pandas as pd
 
-from memoization import cached
+import pandas as pd
 import torch
 import torch.nn.functional as F
-from torch.utils.data import Dataset
 import torchaudio
+from memoization import cached
+from torch.utils.data import Dataset
+from transformers import ASTFeatureExtractor
+
 from beans.torchvggish import vggish_input
 
 FFT_SIZE_IN_SECS = 0.05
@@ -99,6 +101,17 @@ def _get_vggish_spectrogram_with_offset(filename, st, ed, max_duration, target_s
     spec = vggish_input.waveform_to_examples(waveform, target_sample_rate, return_tensor=True)
     return spec
 
+# TODO: understand what that means
+@cached(thread_safe=False, max_size=100_000)
+def _get_ast_spectrogram(filename, max_duration, target_sample_rate, st=None, ed=None):
+    assert target_sample_rate == 16_000
+    waveform = _get_waveform(filename, max_duration, target_sample_rate).numpy()
+    if st:
+        assert ed is not None
+        waveform = waveform[st:ed]
+    mel_spectrogram_extractor = ASTFeatureExtractor()
+    spec = mel_spectrogram_extractor(waveform, sampling_rate=target_sample_rate, return_tensors='pt')
+    return spec
 
 class ClassificationDataset(Dataset):
     def __init__(
@@ -163,6 +176,13 @@ class ClassificationDataset(Dataset):
                 max_duration=self.max_duration,
                 target_sample_rate=self.sample_rate,
                 return_mfcc=True)
+        
+        elif self.feature_type == "ast":
+            x = _get_ast_spectrogram(
+                self.xs[idx],
+                max_duration=self.max_duration,
+                target_sample_rate=self.sample_rate
+            )
         else:
             assert False
 
@@ -192,8 +212,8 @@ class RecognitionDataset(Dataset):
 
         if self.feature_type == 'waveform':
             size_per_sec = sample_rate
-        elif self.feature_type == 'vggish':
-            size_per_sec = 16_000       # fixed sample rate for VGGish
+        elif self.feature_type == 'vggish' or 'ast':
+            size_per_sec = 16_000       # fixed sample rate for VGGish and AST
         else:
             size_per_sec = int(1 / HOP_LENGTH_IN_SECS)
 
@@ -265,5 +285,13 @@ class RecognitionDataset(Dataset):
                 target_sample_rate=self.sample_rate,
                 return_mfcc=True)
             x = x[:, offset_st:offset_ed]
-
+        
+        elif self.feature_type == "ast":
+            x = _get_ast_spectrogram(
+                 wav_path,
+                max_duration=self.max_duration,
+                target_sample_rate=self.sample_rate,
+                st=offset_st,
+                ed=offset_ed
+            )
         return x, self.ys[idx]
