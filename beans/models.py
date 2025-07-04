@@ -194,6 +194,7 @@ class ASTClassifierFrozen(torch.nn.Module):
             self.loss_func = nn.CrossEntropyLoss()
 
     def forward(self, x, y=None):
+        x["input_values"] = x["input_values"].squeeze()
         with torch.no_grad():
             x = self.ast(**x).last_hidden_state
             x = torch.mean(
