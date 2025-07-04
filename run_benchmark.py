@@ -29,6 +29,7 @@ MODELS = [
     ('pilot-mtl-equal', 'pilot-mtl-equal', ''),
     ('pilot-mtl-manual', 'pilot-mtl-manual', ''),
     ('pilot-mtl-gradnorm', 'pilot-mtl-gradnorm', ''),
+    ('ast-frozen', 'ast-frozen', ''),
 ]
 
 TASKS = [

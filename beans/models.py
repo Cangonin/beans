@@ -126,6 +126,7 @@ class HubertClassifierFrozen(nn.Module):
         return loss, logits
 
 # Frozen pilot study models
+# TODO: I guess I should removethe dropout because I froze everything?
 class SingleMultiTaskEncoder(torch.nn.Module):
     def __init__(self, hidden_layer_size: int = 768):
         super().__init__()
@@ -148,7 +149,7 @@ class SingleMultiTaskEncoder(torch.nn.Module):
             # torch.FloatTensor of shape (batch_size, sequence_length, hidden_size)
             x = torch.mean(
                 x, dim=1
-            )  # output shape (batch size, hidden_size). Should I average in the end instead?
+            )  # output shape (batch size, hidden_size)
             x = self.linearshared1(x)
             x = self.activation1(x)
             x = self.dropout1(x)
@@ -175,4 +176,33 @@ class SingleMultiTaskClassifier(torch.nn.Module):
         if y is not None:
             loss = self.loss_func(logits, y)
 
-        return loss, logits    
+        return loss, logits
+
+class ASTClassifierFrozen(torch.nn.Module):
+    def __init__(self, num_classes=None, multi_label=False):
+        super().__init__()
+        self.ast = ASTModel.from_pretrained(
+            "MIT/ast-finetuned-audioset-10-10-0.4593"
+        )
+        if torch.cuda.is_available():
+            self.ast = self.ast.cuda()
+        self.linear = nn.Linear(in_features=768, out_features=num_classes)
+        
+        if multi_label:
+            self.loss_func = nn.BCEWithLogitsLoss()
+        else:
+            self.loss_func = nn.CrossEntropyLoss()
+
+    def forward(self, x, y=None):
+        with torch.no_grad():
+            x = self.ast(**x).last_hidden_state
+            x = torch.mean(
+                x, dim=1
+            )
+        logits = self.linear(x)
+        loss = None
+        if y is not None:
+            loss = self.loss_func(logits, y)
+
+        return loss, logits
+        
