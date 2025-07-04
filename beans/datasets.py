@@ -212,8 +212,8 @@ class RecognitionDataset(Dataset):
 
         if self.feature_type == 'waveform':
             size_per_sec = sample_rate
-        elif self.feature_type == 'vggish':
-            size_per_sec = 16_000       # fixed sample rate for VGGish
+        elif self.feature_type == 'vggish' or 'ast':
+            size_per_sec = 16_000       # fixed sample rate for VGGish and AST
         else:
             size_per_sec = int(1 / HOP_LENGTH_IN_SECS)
 
