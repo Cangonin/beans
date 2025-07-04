@@ -125,6 +125,7 @@ class HubertClassifierFrozen(nn.Module):
 
         return loss, logits
 
+# Frozen pilot study models
 class SingleMultiTaskEncoder(torch.nn.Module):
     def __init__(self, hidden_layer_size: int = 768):
         super().__init__()
@@ -148,9 +149,9 @@ class SingleMultiTaskEncoder(torch.nn.Module):
             x = torch.mean(
                 x, dim=1
             )  # output shape (batch size, hidden_size). Should I average in the end instead?
-        x = self.linearshared1(x)
-        x = self.activation1(x)
-        x = self.dropout1(x)
+            x = self.linearshared1(x)
+            x = self.activation1(x)
+            x = self.dropout1(x)
         return x
 
 class SingleMultiTaskClassifier(torch.nn.Module):
