@@ -301,7 +301,7 @@ def main():
     # Not very clean, maybe add it in argparse instead?
     if args.model_type.startswith('hubert'):
         dataset['sample_rate'] = HUBERT_BASE.sample_rate
-    elif args.model_type.startswith('pilot'):
+    elif args.model_type.startswith('pilot') or args.model_type == 'ast-frozen':
         dataset['sample_rate'] = 16000
     
     num_labels = dataset['num_labels']
