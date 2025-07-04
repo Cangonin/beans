@@ -151,7 +151,6 @@ class SingleMultiTaskEncoder(torch.nn.Module):
             )  # output shape (batch size, hidden_size). Should I average in the end instead?
             x = self.linearshared1(x)
             x = self.activation1(x)
-            x = self.dropout1(x)
         return x
 
 class SingleMultiTaskClassifier(torch.nn.Module):

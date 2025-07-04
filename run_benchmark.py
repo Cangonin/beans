@@ -23,12 +23,12 @@ MODELS = [
     # ('vggish', 'vggish', ''),
     # ('hubert', 'hubert', ''),
     # ('hubert-frozen', 'hubert-frozen', ''),
-    #('pilot-individual', 'pilot-individual', ''),
-    #('pilot-species', 'pilot-species', ''),
-    #('pilot-vox-type', 'pilot-vox-type', ''),
-    ('pilot-mtl-equal', 'pilot-mtl-equal', ''),
-    ('pilot-mtl-manual', 'pilot-mtl-manual', ''),
-    ('pilot-mtl-gradnorm', 'pilot-mtl-gradnorm', ''),
+    ('pilot-individual', 'pilot-individual', ''),
+    ('pilot-species', 'pilot-species', ''),
+    ('pilot-vox-type', 'pilot-vox-type', ''),
+    #('pilot-mtl-equal', 'pilot-mtl-equal', ''),
+    #('pilot-mtl-manual', 'pilot-mtl-manual', ''),
+    #('pilot-mtl-gradnorm', 'pilot-mtl-gradnorm', ''),
 ]
 
 TASKS = [
@@ -37,13 +37,13 @@ TASKS = [
     ('classification', 'dogs'),
     ('classification', 'cbi'),
     ('classification', 'humbugdb'),
-    ('detection', 'dcase'),
+    #('detection', 'dcase'),
     ('detection', 'enabirds'),
     ('detection', 'hiceas'),
     ('detection', 'hainan-gibbons'),
-    ('detection', 'rfcx'),
+    #('detection', 'rfcx'),
     ('classification', 'esc50'),
-    ('classification', 'speech-commands'),
+    #('classification', 'speech-commands'),
 ]
 
 for model_name, model_type, model_params in MODELS:
