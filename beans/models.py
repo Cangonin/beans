@@ -141,7 +141,7 @@ class SingleMultiTaskEncoder(torch.nn.Module):
             self.hidden_layer_size,
         )
         self.activation1 = torch.nn.ReLU()
-        self.dropout1 = torch.nn.Dropout(p=0.7)  # Will be replaced anyway
+        self.dropout1 = torch.nn.Dropout(p=0.7)  # Will not be used anyway
 
     def forward(self, x):
         with torch.no_grad():
@@ -152,7 +152,6 @@ class SingleMultiTaskEncoder(torch.nn.Module):
             )  # output shape (batch size, hidden_size)
             x = self.linearshared1(x)
             x = self.activation1(x)
-            x = self.dropout1(x)
         return x
 
 class SingleMultiTaskClassifier(torch.nn.Module):
