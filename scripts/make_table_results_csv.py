@@ -23,7 +23,7 @@ def get_test_results(dataset_name: str, model_type: str) -> str:
     score: List[str] = []
 
     if not log_path.exists():
-        print("Log path {log_path} does not exist, skipping", file=sys.stderr)
+        print(f"Log path {log_path} does not exist, skipping", file=sys.stderr)
         return ""
     with open(log_path, 'r') as f:
         for line in f:
@@ -64,6 +64,7 @@ if __name__ == "__main__":
     ('pilot-mtl-equal', 'pilot-mtl-equal', ''),
     ('pilot-mtl-manual', 'pilot-mtl-manual', ''),
     ('pilot-mtl-gradnorm', 'pilot-mtl-gradnorm', ''),
+    ('ast-frozen', 'ast-frozen', ''),
 ]
 
     TASKS = [
