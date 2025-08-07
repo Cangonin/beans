@@ -126,6 +126,7 @@ class HubertClassifierFrozen(nn.Module):
         return loss, logits
 
 # Frozen pilot study models
+# TODO: I guess I should removethe dropout because I froze everything?
 class SingleMultiTaskEncoder(torch.nn.Module):
     def __init__(self, hidden_layer_size: int = 768):
         super().__init__()
@@ -140,7 +141,7 @@ class SingleMultiTaskEncoder(torch.nn.Module):
             self.hidden_layer_size,
         )
         self.activation1 = torch.nn.ReLU()
-        self.dropout1 = torch.nn.Dropout(p=0.7)  # Will be replaced anyway
+        self.dropout1 = torch.nn.Dropout(p=0.7)  # Will not be used anyway
 
     def forward(self, x):
         with torch.no_grad():
@@ -148,10 +149,9 @@ class SingleMultiTaskEncoder(torch.nn.Module):
             # torch.FloatTensor of shape (batch_size, sequence_length, hidden_size)
             x = torch.mean(
                 x, dim=1
-            )  # output shape (batch size, hidden_size). Should I average in the end instead?
+            )  # output shape (batch size, hidden_size)
             x = self.linearshared1(x)
             x = self.activation1(x)
-            x = self.dropout1(x)
         return x
 
 class SingleMultiTaskClassifier(torch.nn.Module):
@@ -175,4 +175,34 @@ class SingleMultiTaskClassifier(torch.nn.Module):
         if y is not None:
             loss = self.loss_func(logits, y)
 
-        return loss, logits    
+        return loss, logits
+
+class ASTClassifierFrozen(torch.nn.Module):
+    def __init__(self, num_classes=None, multi_label=False):
+        super().__init__()
+        self.ast = ASTModel.from_pretrained(
+            "MIT/ast-finetuned-audioset-10-10-0.4593"
+        )
+        if torch.cuda.is_available():
+            self.ast = self.ast.cuda()
+        self.linear = nn.Linear(in_features=768, out_features=num_classes)
+        
+        if multi_label:
+            self.loss_func = nn.BCEWithLogitsLoss()
+        else:
+            self.loss_func = nn.CrossEntropyLoss()
+
+    def forward(self, x, y=None):
+        x["input_values"] = x["input_values"].squeeze()
+        with torch.no_grad():
+            x = self.ast(**x).last_hidden_state
+            x = torch.mean(
+                x, dim=1
+            )
+        logits = self.linear(x)
+        loss = None
+        if y is not None:
+            loss = self.loss_func(logits, y)
+
+        return loss, logits
+        

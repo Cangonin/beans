@@ -22,9 +22,9 @@ from xgboost import XGBClassifier
 
 from beans.datasets import ClassificationDataset, RecognitionDataset
 from beans.metrics import Accuracy, MeanAveragePrecision
-from beans.models import (HubertClassifier, HubertClassifierFrozen,
-                          ResNetClassifier, SingleMultiTaskClassifier,
-                          VGGishClassifier)
+from beans.models import (ASTClassifierFrozen, HubertClassifier,
+                          HubertClassifierFrozen, ResNetClassifier,
+                          SingleMultiTaskClassifier, VGGishClassifier)
 
 
 def read_datasets(path):
@@ -192,6 +192,8 @@ def train_pytorch_model(
                 model_type=args.model_type, 
                 num_classes=num_labels,
                 multi_label=(args.task=='detection')).to(device)
+        elif args.model_type == 'ast-frozen':
+            model = ASTClassifierFrozen(num_classes=num_labels, multi_label=(args.task=='detection')).to(device)
         
         optimizer = optim.Adam(params=model.parameters(), lr=lr)
 
@@ -265,7 +267,8 @@ def main():
         'vggish', 'hubert', 'hubert-frozen', 
         'pilot-individual', 'pilot-species', 
         'pilot-vox-type', 'pilot-mtl-equal', 
-        'pilot-mtl-manual', 'pilot-mtl-gradnorm'])
+        'pilot-mtl-manual', 'pilot-mtl-gradnorm',
+        'ast-frozen'])
     parser.add_argument('--dataset', choices=datasets.keys())
     parser.add_argument('--num-workers', type=int, default=4)
     parser.add_argument('--stop-shuffle', action='store_true')
@@ -287,7 +290,7 @@ def main():
         feature_type = 'waveform'
     elif args.model_type.startswith('resnet'):
         feature_type = 'melspectrogram'
-    elif args.model_type.startswith('pilot'):
+    elif args.model_type.startswith('pilot') or args.model_type == 'ast-frozen':
         feature_type = 'ast'
     else:
         feature_type = 'mfcc'
@@ -298,7 +301,7 @@ def main():
     # Not very clean, maybe add it in argparse instead?
     if args.model_type.startswith('hubert'):
         dataset['sample_rate'] = HUBERT_BASE.sample_rate
-    elif args.model_type.startswith('pilot'):
+    elif args.model_type.startswith('pilot') or args.model_type == 'ast-frozen':
         dataset['sample_rate'] = 16000
     
     num_labels = dataset['num_labels']
