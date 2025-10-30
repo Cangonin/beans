@@ -22,29 +22,33 @@ from xgboost import XGBClassifier
 
 from beans.datasets import ClassificationDataset, RecognitionDataset
 from beans.metrics import Accuracy, MeanAveragePrecision
-from beans.models import (ASTClassifierFrozen, HubertClassifier,
-                          HubertClassifierFrozen, ResNetClassifier,
-                          SingleMultiTaskClassifier, VGGishClassifier)
+from beans.models import (
+    ASTClassifierFrozen,
+    HubertClassifier,
+    HubertClassifierFrozen,
+    HuBERTMTLClassifierFrozen,
+    ResNetClassifier,
+    SingleMultiTaskClassifier,
+    VGGishClassifier,
+)
 
 
 def read_datasets(path):
     with open(path) as f:
         datasets = yaml.safe_load(f)
 
-    return {d['name']: d for d in datasets}
+    return {d["name"]: d for d in datasets}
 
 
 def spec2feats(spec):
-    spec = torch.cat([
-        spec.mean(dim=1),
-        spec.std(dim=1),
-        spec.min(dim=1)[0],
-        spec.max(dim=1)[0]])
+    spec = torch.cat(
+        [spec.mean(dim=1), spec.std(dim=1), spec.min(dim=1)[0], spec.max(dim=1)[0]]
+    )
     return spec.numpy().reshape(-1)
 
 
 def eval_sklearn_model(model_and_scaler, dataloader, num_labels, metric_factory):
-    total_loss = 0.
+    total_loss = 0.0
     metric = metric_factory()
     model, scaler = model_and_scaler
 
@@ -61,8 +65,10 @@ def eval_sklearn_model(model_and_scaler, dataloader, num_labels, metric_factory)
     return total_loss, metric.get_primary_metric()
 
 
-def train_sklearn_model(args, dataloader_train, dataloader_valid, num_labels, metric_factory, log_file):
-    print(f'Building training data ...', file=sys.stderr)
+def train_sklearn_model(
+    args, dataloader_train, dataloader_valid, num_labels, metric_factory, log_file
+):
+    print("Building training data ...", file=sys.stderr)
 
     xs = []
     ys = []
@@ -72,32 +78,35 @@ def train_sklearn_model(args, dataloader_train, dataloader_valid, num_labels, me
 
     scaler = preprocessing.StandardScaler().fit(xs)
     xs_scaled = scaler.transform(xs)
-    print(f"Num. features = {xs_scaled[0].shape}, num. instances = {len(xs_scaled)}", file=sys.stderr)
+    print(
+        f"Num. features = {xs_scaled[0].shape}, num. instances = {len(xs_scaled)}",
+        file=sys.stderr,
+    )
 
     params = ast.literal_eval(args.params)
-    assert(isinstance(params, dict))
+    assert isinstance(params, dict)
     param_list = [[(k, v) for v in vs] for k, vs in params.items()]
     param_combinations = itertools.product(*param_list)
 
-    valid_metric_best = 0.
+    valid_metric_best = 0.0
     best_model = None
 
     for extra_params in param_combinations:
         extra_params = dict(extra_params)
-        print(f'Fitting data (params: {extra_params})...', file=sys.stderr)
+        print(f"Fitting data (params: {extra_params})...", file=sys.stderr)
 
-        if args.model_type == 'lr':
+        if args.model_type == "lr":
             model = LogisticRegression(max_iter=1_000, **extra_params)
-        elif args.model_type == 'svm':
+        elif args.model_type == "svm":
             model = SVC(**extra_params)
-        elif args.model_type == 'decisiontree':
+        elif args.model_type == "decisiontree":
             model = DecisionTreeClassifier(**extra_params)
-        elif args.model_type == 'gbdt':
+        elif args.model_type == "gbdt":
             model = GradientBoostingClassifier(**extra_params)
-        elif args.model_type == 'xgboost':
+        elif args.model_type == "xgboost":
             model = XGBClassifier(n_jobs=4, **extra_params)
 
-        if args.task == 'detection':
+        if args.task == "detection":
             model = MultiOutputClassifier(model)
 
         model.fit(xs_scaled, ys)
@@ -106,24 +115,24 @@ def train_sklearn_model(args, dataloader_train, dataloader_valid, num_labels, me
             model_and_scaler=(model, scaler),
             dataloader=dataloader_valid,
             num_labels=num_labels,
-            metric_factory=metric_factory)
+            metric_factory=metric_factory,
+        )
 
         if valid_metric > valid_metric_best:
             best_model = model
             valid_metric_best = valid_metric
 
-        print({
-            'extra_params': extra_params,
-            'valid': {
-                'metric': valid_metric
-            }}, file=log_file)
+        print(
+            {"extra_params": extra_params, "valid": {"metric": valid_metric}},
+            file=log_file,
+        )
 
     return (best_model, scaler), valid_metric_best
 
 
 def eval_pytorch_model(model, dataloader, metric_factory, device, desc):
     model.eval()
-    total_loss = 0.
+    total_loss = 0.0
     steps = 0
     metric = metric_factory()
     with torch.no_grad():
@@ -150,63 +159,75 @@ def train_pytorch_model(
     metric_factory,
     sample_rate,
     device,
-    log_file):
-
+    log_file,
+):
     lrs = ast.literal_eval(args.lrs)
     assert isinstance(lrs, list)
 
-    valid_metric_best = 0.
+    valid_metric_best = 0.0
     best_model = None
 
     for lr in lrs:
-        print(f"lr = {lr}" , file=log_file)
+        print(f"lr = {lr}", file=log_file)
 
-        if args.model_type.startswith('resnet') and args.task == 'classification':
-            pretrained = args.model_type.endswith('pretrained')
-            model = ResNetClassifier(
-                model_type=args.model_type,
-                pretrained=pretrained,
-                num_classes=num_labels).to(device)
-        elif args.model_type.startswith('resnet') and args.task == 'detection':
-            pretrained = args.model_type.endswith('pretrained')
+        if args.model_type.startswith("resnet") and args.task == "classification":
+            pretrained = args.model_type.endswith("pretrained")
             model = ResNetClassifier(
                 model_type=args.model_type,
                 pretrained=pretrained,
                 num_classes=num_labels,
-                multi_label=True).to(device)
-        elif args.model_type == 'vggish':
+            ).to(device)
+        elif args.model_type.startswith("resnet") and args.task == "detection":
+            pretrained = args.model_type.endswith("pretrained")
+            model = ResNetClassifier(
+                model_type=args.model_type,
+                pretrained=pretrained,
+                num_classes=num_labels,
+                multi_label=True,
+            ).to(device)
+        elif args.model_type == "vggish":
             model = VGGishClassifier(
                 sample_rate=sample_rate,
                 num_classes=num_labels,
-                multi_label=(args.task=='detection')).to(device)
-        elif args.model_type == 'hubert':
+                multi_label=(args.task == "detection"),
+            ).to(device)
+        elif args.model_type == "hubert":
             model = HubertClassifier(
-                num_classes=num_labels,
-                multi_label=(args.task=='detection')).to(device)
-        elif args.model_type == 'hubert-frozen':
+                num_classes=num_labels, multi_label=(args.task == "detection")
+            ).to(device)
+        elif args.model_type == "hubert-frozen":
             model = HubertClassifierFrozen(
+                num_classes=num_labels, multi_label=(args.task == "detection")
+            ).to(device)
+        elif args.model_type == "hubert-mtl-frozen":
+            model = HuBERTMTLClassifierFrozen(
+                model_path=args.model_path,
                 num_classes=num_labels,
-                multi_label=(args.task=='detection')).to(device)
-        elif args.model_type.startswith('pilot'):
+                multi_label=(args.task == "detection"),
+            ).to(device)
+        elif args.model_type.startswith("pilot"):
             model = SingleMultiTaskClassifier(
-                model_type=args.model_type, 
+                model_type=args.model_type,
                 num_classes=num_labels,
-                multi_label=(args.task=='detection')).to(device)
-        elif args.model_type == 'ast-frozen':
-            model = ASTClassifierFrozen(num_classes=num_labels, multi_label=(args.task=='detection')).to(device)
-        
+                multi_label=(args.task == "detection"),
+            ).to(device)
+        elif args.model_type == "ast-frozen":
+            model = ASTClassifierFrozen(
+                num_classes=num_labels, multi_label=(args.task == "detection")
+            ).to(device)
+
         optimizer = optim.Adam(params=model.parameters(), lr=lr)
 
         for epoch in range(args.epochs):
-            print(f'epoch = {epoch}', file=sys.stderr)
+            print(f"epoch = {epoch}", file=sys.stderr)
 
             model.train()
 
-            train_loss = 0.
+            train_loss = 0.0
             train_steps = 0
             train_metric = metric_factory()
 
-            for x, y in tqdm(dataloader_train, desc='train'):
+            for x, y in tqdm(dataloader_train, desc="train"):
                 optimizer.zero_grad()
 
                 x = x.to(device)
@@ -228,141 +249,165 @@ def train_pytorch_model(
                 dataloader=dataloader_valid,
                 metric_factory=metric_factory,
                 device=device,
-                desc='valid')
+                desc="valid",
+            )
 
             if valid_metric > valid_metric_best:
                 valid_metric_best = valid_metric
                 best_model = copy.deepcopy(model)
 
-            print({
-                'epoch': epoch,
-                'train': {
-                    'loss': (train_loss / train_steps).cpu().item(),
-                    'metric': train_metric.get_metric(),
+            print(
+                {
+                    "epoch": epoch,
+                    "train": {
+                        "loss": (train_loss / train_steps).cpu().item(),
+                        "metric": train_metric.get_metric(),
+                    },
+                    "valid": {"loss": valid_loss, "metric": valid_metric},
                 },
-                'valid': {
-                    'loss': valid_loss,
-                    'metric': valid_metric
-                }
-            }, file=log_file)
+                file=log_file,
+            )
             log_file.flush()
 
     return best_model, valid_metric_best
 
 
 def main():
-    datasets = read_datasets('datasets.yml')
+    datasets = read_datasets("datasets.yml")
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--batch-size', type=int, default=32)
-    parser.add_argument('--epochs', type=int, default=30)
-    parser.add_argument('--lrs', type=str)
-    parser.add_argument('--params', type=str)
-    parser.add_argument('--task', choices=['classification', 'detection'])
-    parser.add_argument('--model-type', choices=[
-        'lr', 'svm', 'decisiontree', 'gbdt', 'xgboost',
-        'resnet18', 'resnet18-pretrained',
-        'resnet50', 'resnet50-pretrained',
-        'resnet152', 'resnet152-pretrained',
-        'vggish', 'hubert', 'hubert-frozen', 
-        'pilot-individual', 'pilot-species', 
-        'pilot-vox-type', 'pilot-mtl-equal', 
-        'pilot-mtl-manual', 'pilot-mtl-gradnorm',
-        'ast-frozen'])
-    parser.add_argument('--dataset', choices=datasets.keys())
-    parser.add_argument('--num-workers', type=int, default=4)
-    parser.add_argument('--stop-shuffle', action='store_true')
-    parser.add_argument('--log-path', type=str)
+    parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument("--epochs", type=int, default=30)
+    parser.add_argument("--lrs", type=str)
+    parser.add_argument("--params", type=str)
+    parser.add_argument("--task", choices=["classification", "detection"])
+    parser.add_argument(
+        "--model-type",
+        choices=[
+            "lr",
+            "svm",
+            "decisiontree",
+            "gbdt",
+            "xgboost",
+            "resnet18",
+            "resnet18-pretrained",
+            "resnet50",
+            "resnet50-pretrained",
+            "resnet152",
+            "resnet152-pretrained",
+            "vggish",
+            "hubert",
+            "hubert-frozen",
+            "hubert-mtl-frozen",
+            "pilot-individual",
+            "pilot-species",
+            "pilot-vox-type",
+            "pilot-mtl-equal",
+            "pilot-mtl-manual",
+            "pilot-mtl-gradnorm",
+            "ast-frozen",
+        ],
+    )
+    parser.add_argument("--dataset", choices=datasets.keys())
+    parser.add_argument("--num-workers", type=int, default=4)
+    parser.add_argument("--stop-shuffle", action="store_true")
+    parser.add_argument("--log-path", type=str)
+    parser.add_argument("--model-path", type=str, default="")
     args = parser.parse_args()
 
     torch.random.manual_seed(42)
     random.seed(42)
     if args.log_path:
-        log_file = open(args.log_path, mode='w')
+        log_file = open(args.log_path, mode="w")
     else:
         log_file = sys.stderr
 
-    device = torch.device('cuda:0')
+    device = torch.device("cuda:0")
 
-    if args.model_type == 'vggish':
-        feature_type = 'vggish'
-    elif args.model_type.startswith('hubert'):
-        feature_type = 'waveform'
-    elif args.model_type.startswith('resnet'):
-        feature_type = 'melspectrogram'
-    elif args.model_type.startswith('pilot') or args.model_type == 'ast-frozen':
-        feature_type = 'ast'
+    if args.model_type == "vggish":
+        feature_type = "vggish"
+    elif args.model_type.startswith("hubert"):
+        feature_type = "waveform"
+    elif args.model_type.startswith("resnet"):
+        feature_type = "melspectrogram"
+    elif args.model_type.startswith("pilot") or args.model_type == "ast-frozen":
+        feature_type = "ast"
     else:
-        feature_type = 'mfcc'
-
+        feature_type = "mfcc"
 
     dataset = datasets[args.dataset]
 
     # Not very clean, maybe add it in argparse instead?
-    if args.model_type.startswith('hubert'):
-        dataset['sample_rate'] = HUBERT_BASE.sample_rate
-    elif args.model_type.startswith('pilot') or args.model_type == 'ast-frozen':
-        dataset['sample_rate'] = 16000
-    
-    num_labels = dataset['num_labels']
+    if args.model_type.startswith("hubert"):
+        dataset["sample_rate"] = HUBERT_BASE.sample_rate
+    elif args.model_type.startswith("pilot") or args.model_type == "ast-frozen":
+        dataset["sample_rate"] = 16000
 
-    if dataset['type'] == 'classification':
+    num_labels = dataset["num_labels"]
+
+    if dataset["type"] == "classification":
         dataset_train = ClassificationDataset(
-            metadata_path=dataset['train_data'],
+            metadata_path=dataset["train_data"],
             num_labels=num_labels,
-            labels=dataset['labels'],
-            unknown_label=dataset['unknown_label'],
-            sample_rate=dataset['sample_rate'],
-            max_duration=dataset['max_duration'],
-            feature_type=feature_type)
+            labels=dataset["labels"],
+            unknown_label=dataset["unknown_label"],
+            sample_rate=dataset["sample_rate"],
+            max_duration=dataset["max_duration"],
+            feature_type=feature_type,
+        )
         dataset_valid = ClassificationDataset(
-            metadata_path=dataset['valid_data'],
+            metadata_path=dataset["valid_data"],
             num_labels=num_labels,
-            labels=dataset['labels'],
-            unknown_label=dataset['unknown_label'],
-            sample_rate=dataset['sample_rate'],
-            max_duration=dataset['max_duration'],
-            feature_type=feature_type)
+            labels=dataset["labels"],
+            unknown_label=dataset["unknown_label"],
+            sample_rate=dataset["sample_rate"],
+            max_duration=dataset["max_duration"],
+            feature_type=feature_type,
+        )
         dataset_test = ClassificationDataset(
-            metadata_path=dataset['test_data'],
+            metadata_path=dataset["test_data"],
             num_labels=num_labels,
-            labels=dataset['labels'],
-            unknown_label=dataset['unknown_label'],
-            sample_rate=dataset['sample_rate'],
-            max_duration=dataset['max_duration'],
-            feature_type=feature_type)
+            labels=dataset["labels"],
+            unknown_label=dataset["unknown_label"],
+            sample_rate=dataset["sample_rate"],
+            max_duration=dataset["max_duration"],
+            feature_type=feature_type,
+        )
 
-    elif dataset['type'] == 'detection':
+    elif dataset["type"] == "detection":
         dataset_train = RecognitionDataset(
-            metadata_path=dataset['train_data'],
+            metadata_path=dataset["train_data"],
             num_labels=num_labels,
-            labels=dataset['labels'],
-            unknown_label=dataset['unknown_label'],
-            sample_rate=dataset['sample_rate'],
+            labels=dataset["labels"],
+            unknown_label=dataset["unknown_label"],
+            sample_rate=dataset["sample_rate"],
             max_duration=60,
-            window_width=dataset['window_width'],
-            window_shift=dataset['window_shift'],
-            feature_type=feature_type)
+            window_width=dataset["window_width"],
+            window_shift=dataset["window_shift"],
+            feature_type=feature_type,
+        )
         dataset_valid = RecognitionDataset(
-            metadata_path=dataset['valid_data'],
+            metadata_path=dataset["valid_data"],
             num_labels=num_labels,
-            labels=dataset['labels'],
-            unknown_label=dataset['unknown_label'],
-            sample_rate=dataset['sample_rate'],
+            labels=dataset["labels"],
+            unknown_label=dataset["unknown_label"],
+            sample_rate=dataset["sample_rate"],
             max_duration=60,
-            window_width=dataset['window_width'],
-            window_shift=dataset['window_shift'],
-            feature_type=feature_type)
+            window_width=dataset["window_width"],
+            window_shift=dataset["window_shift"],
+            feature_type=feature_type,
+        )
         dataset_test = RecognitionDataset(
-            metadata_path=dataset['test_data'],
+            metadata_path=dataset["test_data"],
             num_labels=num_labels,
-            labels=dataset['labels'],
-            unknown_label=dataset['unknown_label'],
-            sample_rate=dataset['sample_rate'],
+            labels=dataset["labels"],
+            unknown_label=dataset["unknown_label"],
+            sample_rate=dataset["sample_rate"],
             max_duration=60,
-            window_width=dataset['window_width'],
-            window_shift=dataset['window_shift'],
-            feature_type=feature_type)
+            window_width=dataset["window_width"],
+            window_shift=dataset["window_shift"],
+            feature_type=feature_type,
+        )
     else:
         raise ValueError(f"Invalid dataset type: {dataset['type']}")
 
@@ -372,14 +417,16 @@ def main():
         shuffle=not args.stop_shuffle,
         num_workers=args.num_workers,
         pin_memory=True,
-        persistent_workers=True)
+        persistent_workers=True,
+    )
     dataloader_valid = DataLoader(
         dataset=dataset_valid,
         batch_size=args.batch_size,
         shuffle=False,
         num_workers=args.num_workers,
         pin_memory=True,
-        persistent_workers=True)
+        persistent_workers=True,
+    )
     if dataset_test is not None:
         dataloader_test = DataLoader(
             dataset=dataset_test,
@@ -387,30 +434,33 @@ def main():
             shuffle=False,
             num_workers=args.num_workers,
             pin_memory=True,
-            persistent_workers=True)
+            persistent_workers=True,
+        )
     else:
         dataloader_test = None
 
-    if args.task == 'classification':
+    if args.task == "classification":
         Metric = Accuracy
-    elif args.task == 'detection':
+    elif args.task == "detection":
         Metric = MeanAveragePrecision
 
-    if args.model_type in {'lr', 'svm', 'decisiontree', 'gbdt', 'xgboost'}:
+    if args.model_type in {"lr", "svm", "decisiontree", "gbdt", "xgboost"}:
         model_and_scaler, valid_metric_best = train_sklearn_model(
             args=args,
             dataloader_train=dataloader_train,
             dataloader_valid=dataloader_valid,
             num_labels=num_labels,
             metric_factory=Metric,
-            log_file=log_file)
+            log_file=log_file,
+        )
 
         if dataloader_test is not None:
             _, test_metric = eval_sklearn_model(
                 model_and_scaler=model_and_scaler,
                 dataloader=dataloader_test,
                 num_labels=num_labels,
-                metric_factory=Metric)
+                metric_factory=Metric,
+            )
 
     else:
         model, valid_metric_best = train_pytorch_model(
@@ -419,9 +469,10 @@ def main():
             dataloader_valid=dataloader_valid,
             num_labels=num_labels,
             metric_factory=Metric,
-            sample_rate=dataset.get('sample_rate', 16000),
+            sample_rate=dataset.get("sample_rate", 16000),
             device=device,
-            log_file=log_file)
+            log_file=log_file,
+        )
 
         if dataloader_test is not None:
             _, test_metric = eval_pytorch_model(
@@ -429,15 +480,20 @@ def main():
                 dataloader=dataloader_test,
                 metric_factory=Metric,
                 device=device,
-                desc='test')
+                desc="test",
+            )
 
     print(
-        'valid_metric_best = ', valid_metric_best,
-        'test_metric = ', test_metric,
-        file=log_file)
+        "valid_metric_best = ",
+        valid_metric_best,
+        "test_metric = ",
+        test_metric,
+        file=log_file,
+    )
 
     if args.log_path:
         log_file.close()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
