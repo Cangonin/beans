@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,10 +9,9 @@ from scipy.stats import wilcoxon
 
 
 def prepare_results_dataframe(results_path: Path) -> pd.DataFrame:
-    results_df = pd.read_csv(results_path, index_col=False)
-    results_df = results_df.drop("rfcx", axis=1) # No results for this dataset
-    results_df.reset_index(drop=True, inplace=True)
-    results_df = results_df.set_index('model').T
+    results_df = pd.read_csv(results_path, index_col=0)
+    results_df = results_df.T
+    results_df = results_df.rename(columns=get_mapping_model_names())
     return results_df
 
 def plot_benchmark_results(results_path: Path):
@@ -25,6 +25,16 @@ def plot_benchmark_results(results_path: Path):
     plt.savefig("beans_datasets.png")
     plt.close()
 
+def get_mapping_model_names() -> Dict[str, str]:
+    mapping = {"pilot-individual": "Individual",
+               "pilot-species": "Species",
+               "pilot-vox-type": "Vox type",
+               "pilot-mtl-equal": "Equal weights",
+               "pilot-mtl-manual": "Static weights",
+               "pilot-mtl-gradnorm": "GradNorm",
+               "ast-frozen": "AST Frozen"}
+    return mapping
+
 def calculate_significant_differences_matrix(results_path: Path):
     results_df = prepare_results_dataframe(results_path=results_path)
     models = results_df.columns
@@ -32,10 +42,12 @@ def calculate_significant_differences_matrix(results_path: Path):
     for i, model_A in enumerate(models):
         for j, model_B in enumerate(models):
             if model_A != model_B:
-                res = wilcoxon(results_df[model_A], results_df[model_B])
+                res = wilcoxon(results_df[model_A], results_df[model_B], zero_method="pratt")
                 matrix_test_results[i, j] = res.pvalue
     test_results_df = pd.DataFrame(matrix_test_results, columns=models, index=models)
     sns.heatmap(test_results_df, annot=True)
+    plt.xticks(rotation=45, fontsize=11)
+    plt.yticks(fontsize=11)
     plt.tight_layout()
     plt.savefig("matrix_significance_results.png")
     plt.close()
@@ -43,6 +55,6 @@ def calculate_significant_differences_matrix(results_path: Path):
 
 
 if __name__ == "__main__":
-    results_csv = "/home/cangonin/Documents/github/beans/data/results_benchmark.csv"
+    results_csv = "/home/cangonin/github/beans/data/results_benchmark_new.csv"
     calculate_significant_differences_matrix(results_path=results_csv)
-    plot_benchmark_results(results_csv)
+    # plot_benchmark_results(results_csv)

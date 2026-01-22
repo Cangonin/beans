@@ -23,30 +23,31 @@ MODELS = [
     # ('vggish', 'vggish', ''),
     # ('hubert', 'hubert', ''),
     # ('hubert-frozen', 'hubert-frozen', ''),
-    #('pilot-individual', 'pilot-individual', ''),
-    #('pilot-species', 'pilot-species', ''),
-    #('pilot-vox-type', 'pilot-vox-type', ''),
-    ('pilot-mtl-equal', 'pilot-mtl-equal', ''),
-    ('pilot-mtl-manual', 'pilot-mtl-manual', ''),
-    ('pilot-mtl-gradnorm', 'pilot-mtl-gradnorm', ''),
-    ('ast-frozen', 'ast-frozen', ''),
+    # ('pilot-individual', 'pilot-individual', ''),
+    # ('pilot-species', 'pilot-species', ''),
+    ('pilot-vox-type', 'pilot-vox-type', ''),
+    # ('pilot-mtl-equal', 'pilot-mtl-equal', ''),
+    # ('pilot-mtl-manual', 'pilot-mtl-manual', ''),
+    # ('pilot-mtl-gradnorm', 'pilot-mtl-gradnorm', ''),
+    # ('ast-frozen', 'ast-frozen', ''),
 ]
 
 TASKS = [
-    ('classification', 'watkins'),
-    ('classification', 'bats'),
-    ('classification', 'dogs'),
-    ('classification', 'cbi'),
-    ('classification', 'humbugdb'),
-    ('detection', 'dcase'),
-    ('detection', 'enabirds'),
-    ('detection', 'hiceas'),
+    # ('detection', 'dcase'),
+    # ('classification', 'watkins'),
+    # ('classification', 'bats'),
+    # ('classification', 'dogs'),
+    # ('classification', 'cbi'),
+    # ('classification', 'humbugdb'),
+    # ('detection', 'rfcx'),
+    # ('detection', 'enabirds'),
+    # ('detection', 'hiceas'),
     ('detection', 'hainan-gibbons'),
-    ('detection', 'rfcx'),
     ('classification', 'esc50'),
     ('classification', 'speech-commands'),
 ]
 
+batch_size = '32'
 for model_name, model_type, model_params in MODELS:
     for task, dataset in TASKS:
         print(f'Running {dataset}-{model_name}', file=sys.stderr)
@@ -60,7 +61,7 @@ for model_name, model_type, model_params in MODELS:
                     '--model-type', model_type,
                     '--params', model_params,
                     '--log-path', log_path,
-                    '--num-workers', '4'] & FG                
+                    '--num-workers', '8'] & FG                
             else:
                 # Use the learning rate that the model has been trained on  
                 lrs = '[1e-5, 5e-5, 1e-4]' 
@@ -69,12 +70,15 @@ for model_name, model_type, model_params in MODELS:
                     with open(config_path, "r") as f:
                         config = json.load(f)
                     lrs = str([config["learning_rate"]])
+                    batch_size = str(config["batch_size"]) #TODO: rerun with this value
+                elif model_type == 'ast-frozen':
+                    lrs = '[1e-4]' # because that was what worked best from the three learning rates in the benchmark
                 python[
                     'scripts/evaluate.py',
                     '--task', task,
                     '--dataset', dataset,
                     '--model-type', model_type,
-                    '--batch-size', '32',
+                    '--batch-size', batch_size,
                     '--epochs', '50',
                     '--lrs', lrs,
                     '--log-path', log_path,

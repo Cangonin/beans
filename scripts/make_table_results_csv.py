@@ -4,6 +4,7 @@ import sys
 from ast import Dict, List
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 
@@ -19,12 +20,12 @@ def get_dict_results():
 
 def get_test_results(dataset_name: str, model_type: str) -> str:
     log_file_name = dataset_name + "-" + model_type
-    log_path = Path(__file__).parent.parent.resolve() / "logs" / log_file_name
+    log_path = Path(__file__).parent.parent.resolve() / "logs_old" / log_file_name
     score: List[str] = []
 
     if not log_path.exists():
         print(f"Log path {log_path} does not exist, skipping", file=sys.stderr)
-        return ""
+        return np.NaN
     with open(log_path, 'r') as f:
         for line in f:
             if "test_metric" in line:
@@ -32,10 +33,10 @@ def get_test_results(dataset_name: str, model_type: str) -> str:
     assert len(score) <= 1
     if len(score) == 0:
         print(f"No test score found for the {log_file_name}", file=sys.stderr)
-        return ""
+        return np.NaN
     else:
         test_score = score[0].split()[-1]
-        test_score = str(round(float(test_score), 3))
+        test_score = round(float(test_score), 3)
         return test_score
 
 
@@ -52,11 +53,12 @@ def get_test_results_all_models(output_path: Path) -> Dict:
         dict_results = get_test_results_one_model(model_type=model, dict_results=dict_results)
     dict_results_pd = pd.DataFrame(dict_results)
     dict_results_pd = dict_results_pd.transpose()
+    dict_results_pd["mean"] = dict_results_pd.astype(float).mean(axis=1).round(3)
     dict_results_pd.to_csv(output_path)
 
 if __name__ == "__main__":
     MODELS = [
-    ('hubert', 'hubert', ''),
+    # ('hubert', 'hubert', ''),
     # ('hubert-frozen', 'hubert-frozen', ''),
     ('pilot-individual', 'pilot-individual', ''),
     ('pilot-species', 'pilot-species', ''),
@@ -81,5 +83,5 @@ if __name__ == "__main__":
         ('classification', 'esc50'),
         ('classification', 'speech-commands'),
     ]
-    output_path = Path(__file__).parent.parent.resolve() / "data" / "results_benchmark.csv"
+    output_path = Path(__file__).parent.parent.resolve() / "data" / "results_benchmark_new.csv"
     get_test_results_all_models(output_path)

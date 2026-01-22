@@ -155,6 +155,7 @@ cython_debug/
 
 # Logs folders
 logs/
+logs_old/
 
 # vscode folder
 .vscode
