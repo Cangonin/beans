@@ -18,9 +18,15 @@ def get_dict_results():
             dict_results[model][dataset] = ""
     return dict_results
 
+def compute_median_ranks_models(results_df: pd.DataFrame) -> pd.DataFrame:
+    ranks_df = results_df.rank(axis=0, method="average", ascending=False)
+    median_ranks = ranks_df.median(axis=1)
+    results_df["Median Rank"] = median_ranks
+    return results_df
+
 def get_test_results(dataset_name: str, model_type: str) -> str:
     log_file_name = dataset_name + "-" + model_type
-    log_path = Path(__file__).parent.parent.resolve() / "logs_old" / log_file_name
+    log_path = Path(__file__).parent.parent.resolve() / "logs" / log_file_name
     score: List[str] = []
 
     if not log_path.exists():
@@ -53,7 +59,7 @@ def get_test_results_all_models(output_path: Path) -> Dict:
         dict_results = get_test_results_one_model(model_type=model, dict_results=dict_results)
     dict_results_pd = pd.DataFrame(dict_results)
     dict_results_pd = dict_results_pd.transpose()
-    dict_results_pd["mean"] = dict_results_pd.astype(float).mean(axis=1).round(3)
+    dict_results_pd = compute_median_ranks_models(dict_results_pd)
     dict_results_pd.to_csv(output_path)
 
 if __name__ == "__main__":
