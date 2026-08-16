@@ -11,6 +11,7 @@ from scipy.stats import wilcoxon
 def prepare_results_dataframe(results_path: Path) -> pd.DataFrame:
     results_df = pd.read_csv(results_path, index_col=0)
     results_df = results_df.T
+    results_df.drop("Median Rank", inplace=True)
     results_df = results_df.rename(columns=get_mapping_model_names())
     return results_df
 
@@ -42,8 +43,10 @@ def calculate_significant_differences_matrix(results_path: Path):
     for i, model_A in enumerate(models):
         for j, model_B in enumerate(models):
             if model_A != model_B:
-                res = wilcoxon(results_df[model_A], results_df[model_B], zero_method="pratt")
+                res = wilcoxon(results_df[model_A], results_df[model_B], zero_method="wilcox")
                 matrix_test_results[i, j] = res.pvalue
+            else:
+                matrix_test_results[i, j] = np.NaN
     test_results_df = pd.DataFrame(matrix_test_results, columns=models, index=models)
     sns.heatmap(test_results_df, annot=True)
     plt.xticks(rotation=45, fontsize=11)

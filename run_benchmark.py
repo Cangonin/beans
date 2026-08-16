@@ -22,10 +22,10 @@ MODELS = [
     # ('resnet152-pretrained', 'resnet152-pretrained', ''),
     # ('vggish', 'vggish', ''),
     # ('hubert', 'hubert', ''),
-    # ('hubert-frozen', 'hubert-frozen', ''),
+    ('hubert-frozen', 'hubert-frozen', ''),
     # ('pilot-individual', 'pilot-individual', ''),
     # ('pilot-species', 'pilot-species', ''),
-    ('pilot-vox-type', 'pilot-vox-type', ''),
+    # ('pilot-vox-type', 'pilot-vox-type', ''),
     # ('pilot-mtl-equal', 'pilot-mtl-equal', ''),
     # ('pilot-mtl-manual', 'pilot-mtl-manual', ''),
     # ('pilot-mtl-gradnorm', 'pilot-mtl-gradnorm', ''),
@@ -42,9 +42,9 @@ TASKS = [
     # ('detection', 'rfcx'),
     # ('detection', 'enabirds'),
     # ('detection', 'hiceas'),
-    ('detection', 'hainan-gibbons'),
+    # ('detection', 'hainan-gibbons'),
+    # ('classification', 'speech-commands'),
     ('classification', 'esc50'),
-    ('classification', 'speech-commands'),
 ]
 
 batch_size = '32'
@@ -73,13 +73,17 @@ for model_name, model_type, model_params in MODELS:
                     batch_size = str(config["batch_size"]) #TODO: rerun with this value
                 elif model_type == 'ast-frozen':
                     lrs = '[1e-4]' # because that was what worked best from the three learning rates in the benchmark
+                    batch_size = '128'
+                elif model_type == 'hubert-frozen':
+                    batch_size = '128'
+
                 python[
                     'scripts/evaluate.py',
                     '--task', task,
                     '--dataset', dataset,
                     '--model-type', model_type,
                     '--batch-size', batch_size,
-                    '--epochs', '50',
+                    '--epochs', '30',
                     '--lrs', lrs,
                     '--log-path', log_path,
                     '--num-workers', '1'] & FG
