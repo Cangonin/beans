@@ -2,6 +2,7 @@ import argparse
 import ast
 import copy
 import itertools
+from pathlib import Path
 import random
 import sys
 
@@ -187,7 +188,7 @@ def train_pytorch_model(
             model = HubertClassifierFrozen(
                 num_classes=num_labels,
                 multi_label=(args.task=='detection')).to(device)
-        elif args.model_type.startswith('pilot'):
+        elif args.model_type.startswith('single-task') or args.model_type.startswith('multi-task'):
             model = SingleMultiTaskClassifier(
                 model_type=args.model_type, 
                 num_classes=num_labels,
@@ -265,10 +266,10 @@ def main():
         'resnet50', 'resnet50-pretrained',
         'resnet152', 'resnet152-pretrained',
         'vggish', 'hubert', 'hubert-frozen', 
-        'pilot-individual', 'pilot-species', 
-        'pilot-vox-type', 'pilot-mtl-equal', 
-        'pilot-mtl-manual', 'pilot-mtl-gradnorm',
-        'ast-frozen'])
+        'single-task-individual', 'single-task-species', 
+        'single-task-vox-type', 'multi-task-equal', 
+        'multi-task-static', 'multi-task-gradnorm',
+        'ast-frozen-single', 'ast-frozen-species', 'ast-frozen-vox-type'])
     parser.add_argument('--dataset', choices=datasets.keys())
     parser.add_argument('--num-workers', type=int, default=4)
     parser.add_argument('--stop-shuffle', action='store_true')
@@ -278,6 +279,8 @@ def main():
     torch.random.manual_seed(42)
     random.seed(42)
     if args.log_path:
+        if not Path(args.log_path).parent.exists():
+            Path(args.log_path).parent.mkdir(parents=True, exist_ok=True)
         log_file = open(args.log_path, mode='w')
     else:
         log_file = sys.stderr
@@ -290,7 +293,7 @@ def main():
         feature_type = 'waveform'
     elif args.model_type.startswith('resnet'):
         feature_type = 'melspectrogram'
-    elif args.model_type.startswith('pilot') or args.model_type == 'ast-frozen':
+    elif any(sub in args.model_type for sub in ["single-task", "multi-task", "ast-frozen"]):
         feature_type = 'ast'
     else:
         feature_type = 'mfcc'
@@ -301,7 +304,7 @@ def main():
     # Not very clean, maybe add it in argparse instead?
     if args.model_type.startswith('hubert'):
         dataset['sample_rate'] = HUBERT_BASE.sample_rate
-    elif args.model_type.startswith('pilot') or args.model_type == 'ast-frozen':
+    elif any(sub in args.model_type for sub in ["single-task", "multi-task", "ast-frozen"]):
         dataset['sample_rate'] = 16000
     
     num_labels = dataset['num_labels']
