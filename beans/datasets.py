@@ -101,7 +101,6 @@ def _get_vggish_spectrogram_with_offset(filename, st, ed, max_duration, target_s
     spec = vggish_input.waveform_to_examples(waveform, target_sample_rate, return_tensor=True)
     return spec
 
-# TODO: understand what that means
 @cached(thread_safe=False, max_size=100_000)
 def _get_ast_spectrogram(filename, max_duration, target_sample_rate, st=None, ed=None):
     assert target_sample_rate == 16_000

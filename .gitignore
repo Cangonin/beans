@@ -154,7 +154,11 @@ cython_debug/
 #.idea/
 
 # Logs folders
-logs/
+logs*
 
 # vscode folder
 .vscode
+
+# slurm output files
+*.out
+*.err
