@@ -6,22 +6,16 @@ import sys
 
 
 def run_benchmark_one_model(model_type: str):
-    if model_type.startswith("single-task") or model_type.startswith("multi-task"):
-        config_path = (
-            pathlib.Path(__file__).parent.resolve()
-            / "data"
-            / "shared_models"
-            / ((model_type.replace("-", "_")) + ".json")
-        )
-        with open(config_path, "r") as f:
-            config = json.load(f)
-        lrs = str([config["learning_rate"]])
-        batch_size = str(config["batch_size"])  # TODO: rerun with this value
-    elif model_type.startswith("ast-frozen"):
-        lrs = "[1e-4]"  # because that was what worked best from the three learning rates in the benchmark #TODO: should I also use the same paraemters as the training?
-        batch_size = "128"
-    elif model_type == "hubert-frozen":
-        batch_size = "128"
+    config_path = (
+        pathlib.Path(__file__).parent.resolve()
+        / "data"
+        / "shared_models"
+        / ((model_type.replace("-", "_")) + ".json")
+    )
+    with open(config_path, "r") as f:
+        config = json.load(f)
+    lrs = str([config["learning_rate"]])
+    batch_size = str(config["batch_size"])
 
     try:
         subprocess.run(
