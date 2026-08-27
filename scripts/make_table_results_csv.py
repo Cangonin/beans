@@ -66,13 +66,13 @@ if __name__ == "__main__":
     MODELS = [
     # ('hubert', 'hubert', ''),
     # ('hubert-frozen', 'hubert-frozen', ''),
-    ('pilot-individual', 'pilot-individual', ''),
-    ('pilot-species', 'pilot-species', ''),
-    ('pilot-vox-type', 'pilot-vox-type', ''),
-    ('pilot-mtl-equal', 'pilot-mtl-equal', ''),
-    ('pilot-mtl-manual', 'pilot-mtl-manual', ''),
-    ('pilot-mtl-gradnorm', 'pilot-mtl-gradnorm', ''),
-    ('ast-frozen', 'ast-frozen', ''),
+    ("single-task-individual", "single-task-individual", ""),
+    ("single-task-species", "single-task-species", ""),
+    ("single-task-vox-type", "single-task-vox-type", ""),
+    ("multi-task-equal", "multi-task-equal", ""),
+    ("multi-task-static", "multi-task-static", ""),
+    ("multi-task-gradnorm", "multi-task-gradnorm", ""),
+    ("ast-frozen-vox-type", "ast-frozen-vox-type", ""),
 ]
 
     TASKS = [
@@ -89,5 +89,5 @@ if __name__ == "__main__":
         ('classification', 'esc50'),
         ('classification', 'speech-commands'),
     ]
-    output_path = Path(__file__).parent.parent.resolve() / "data" / "results_benchmark_new.csv"
+    output_path = Path(__file__).parent.parent.resolve() / "data" / "results_benchmark_.csv"
     get_test_results_all_models(output_path)
