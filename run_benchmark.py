@@ -1,91 +1,61 @@
+import argparse
 import json
 import pathlib
+import subprocess
 import sys
 
-from plumbum import FG, local
-from plumbum.commands.processes import ProcessExecutionError
 
-python = local['python']
-local['mkdir']['-p', 'logs']()
+def run_benchmark_one_model(model_type: str):
+    config_path = (
+        pathlib.Path(__file__).parent.resolve()
+        / "data"
+        / "shared_models"
+        / ((model_type.replace("-", "_")) + ".json")
+    )
+    with open(config_path, "r") as f:
+        config = json.load(f)
+    lrs = str([config["learning_rate"]])
+    batch_size = str(config["batch_size"])
 
-MODELS = [
-    # ('lr', 'lr', '{"C": [0.1, 1.0, 10.0]}'),
-    # ('svm', 'svm', '{"C": [0.1, 1.0, 10.0]}'),
-    # ('decisiontree', 'decisiontree', '{"max_depth": [None, 5, 10, 20, 30]}'),
-    # ('gbdt', 'gbdt', '{"n_estimators": [10, 50, 100, 200]}'),
-    # ('xgboost', 'xgboost', '{"n_estimators": [10, 50, 100, 200]}'),
-    # ('resnet18', 'resnet18', ''),
-    # ('resnet18-pretrained', 'resnet18-pretrained', ''),
-    # ('resnet50', 'resnet50', ''),
-    # ('resnet50-pretrained', 'resnet50-pretrained', ''),
-    # ('resnet152', 'resnet152', ''),
-    # ('resnet152-pretrained', 'resnet152-pretrained', ''),
-    # ('vggish', 'vggish', ''),
-    # ('hubert', 'hubert', ''),
-    ('hubert-frozen', 'hubert-frozen', ''),
-    # ('pilot-individual', 'pilot-individual', ''),
-    # ('pilot-species', 'pilot-species', ''),
-    # ('pilot-vox-type', 'pilot-vox-type', ''),
-    # ('pilot-mtl-equal', 'pilot-mtl-equal', ''),
-    # ('pilot-mtl-manual', 'pilot-mtl-manual', ''),
-    # ('pilot-mtl-gradnorm', 'pilot-mtl-gradnorm', ''),
-    # ('ast-frozen', 'ast-frozen', ''),
-]
+    try:
+        subprocess.run(
+            [
+                "sbatch",
+                f"--export=ALL,MODEL_TYPE={model_type},BATCH_SIZE={batch_size},LRS={lrs},NUM_WORKERS=1",
+                "run_benchmark.sh",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        print(
+            f"Error occurred while running the benchmark for model {model_type}: {e.stderr}"
+        )
 
-TASKS = [
-    # ('detection', 'dcase'),
-    # ('classification', 'watkins'),
-    # ('classification', 'bats'),
-    # ('classification', 'dogs'),
-    # ('classification', 'cbi'),
-    # ('classification', 'humbugdb'),
-    # ('detection', 'rfcx'),
-    # ('detection', 'enabirds'),
-    # ('detection', 'hiceas'),
-    # ('detection', 'hainan-gibbons'),
-    # ('classification', 'speech-commands'),
-    ('classification', 'esc50'),
-]
 
-batch_size = '32'
-for model_name, model_type, model_params in MODELS:
-    for task, dataset in TASKS:
-        print(f'Running {dataset}-{model_name}', file=sys.stderr)
-        log_path = f'logs/{dataset}-{model_name}'
-        try:
-            if model_type in ['lr', 'svm', 'decisiontree', 'gbdt', 'xgboost']:
-                python[
-                    'scripts/evaluate.py',
-                    '--task', task,
-                    '--dataset', dataset,
-                    '--model-type', model_type,
-                    '--params', model_params,
-                    '--log-path', log_path,
-                    '--num-workers', '8'] & FG                
-            else:
-                # Use the learning rate that the model has been trained on  
-                lrs = '[1e-5, 5e-5, 1e-4]' 
-                if model_type.startswith('pilot'):
-                    config_path = pathlib.Path(__file__).parent.resolve() / "data" / "shared_models" / (model_type.replace("pilot-", "") + ".json")
-                    with open(config_path, "r") as f:
-                        config = json.load(f)
-                    lrs = str([config["learning_rate"]])
-                    batch_size = str(config["batch_size"]) #TODO: rerun with this value
-                elif model_type == 'ast-frozen':
-                    lrs = '[1e-4]' # because that was what worked best from the three learning rates in the benchmark
-                    batch_size = '128'
-                elif model_type == 'hubert-frozen':
-                    batch_size = '128'
+if __name__ == "__main__":
+    MODELS = [
+        ("single-task-individual", "single-task-individual", ""),
+        ("single-task-species", "single-task-species", ""),
+        ("single-task-vox-type", "single-task-vox-type", ""),
+        ("multi-task-task-equal", "multi-task-equal", ""),
+        ("multi-task-manual", "multi-task-manual", ""),
+        ("multi-task-gradnorm", "multi-task-gradnorm", ""),
+        ("ast-frozen-individual", "ast-frozen-individual", ""),
+        ("ast-frozen-species", "ast-frozen-species", ""),
+        ("ast-frozen-vox-type", "ast-frozen-vox-type", ""),
+    ]
 
-                python[
-                    'scripts/evaluate.py',
-                    '--task', task,
-                    '--dataset', dataset,
-                    '--model-type', model_type,
-                    '--batch-size', batch_size,
-                    '--epochs', '30',
-                    '--lrs', lrs,
-                    '--log-path', log_path,
-                    '--num-workers', '1'] & FG
-        except ProcessExecutionError as e:
-            print(e)
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--model", type=str, choices=[m[0] for m in MODELS], help="Model to run"
+    )
+    args = parser.parse_args()
+    model_name, model_type, model_params = next(
+        (m for m in MODELS if m[0] == args.model), (None, None, None)
+    )
+    if model_name is None:
+        print(f"Model {args.model} not found in MODELS list.")
+        sys.exit(1)
+    run_benchmark_one_model(model_type)
