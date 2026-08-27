@@ -10,7 +10,7 @@ def run_benchmark_one_model(model_type: str):
         pathlib.Path(__file__).parent.resolve()
         / "data"
         / "shared_models"
-        / ((model_type.replace("-", "_")) + ".json")
+        / (model_type + ".json")
     )
     with open(config_path, "r") as f:
         config = json.load(f)
@@ -39,8 +39,8 @@ if __name__ == "__main__":
         ("single-task-individual", "single-task-individual", ""),
         ("single-task-species", "single-task-species", ""),
         ("single-task-vox-type", "single-task-vox-type", ""),
-        ("multi-task-task-equal", "multi-task-equal", ""),
-        ("multi-task-manual", "multi-task-manual", ""),
+        ("multi-task-equal", "multi-task-equal", ""),
+        ("multi-task-static", "multi-task-static", ""),
         ("multi-task-gradnorm", "multi-task-gradnorm", ""),
         ("ast-frozen-individual", "ast-frozen-individual", ""),
         ("ast-frozen-species", "ast-frozen-species", ""),

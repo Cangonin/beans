@@ -193,7 +193,7 @@ def train_pytorch_model(
                 model_type=args.model_type, 
                 num_classes=num_labels,
                 multi_label=(args.task=='detection')).to(device)
-        elif args.model_type == 'ast-frozen':
+        elif args.model_type.startswith('ast-frozen'):
             model = ASTClassifierFrozen(num_classes=num_labels, multi_label=(args.task=='detection')).to(device)
         
         optimizer = optim.Adam(params=model.parameters(), lr=lr)
@@ -269,7 +269,7 @@ def main():
         'single-task-individual', 'single-task-species', 
         'single-task-vox-type', 'multi-task-equal', 
         'multi-task-static', 'multi-task-gradnorm',
-        'ast-frozen-single', 'ast-frozen-species', 'ast-frozen-vox-type'])
+        'ast-frozen-individual', 'ast-frozen-species', 'ast-frozen-vox-type'])
     parser.add_argument('--dataset', choices=datasets.keys())
     parser.add_argument('--num-workers', type=int, default=4)
     parser.add_argument('--stop-shuffle', action='store_true')
